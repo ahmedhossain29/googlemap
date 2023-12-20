@@ -32,7 +32,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       body: GoogleMap(
         initialCameraPosition: const CameraPosition(
-            zoom: 19,
+            zoom: 20,
             target: LatLng(23.792265005916146, 90.40561775869223),
             bearing: 0,
             tilt: 5),
