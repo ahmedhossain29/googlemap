@@ -1,8 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:location/location.dart';
-
-import 'location_screen.dart';
 
 void main() {
   runApp(const GoogleMapsApp());
@@ -19,91 +19,120 @@ class GoogleMapsApp extends StatelessWidget {
   }
 }
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
+class MyMap extends StatefulWidget {
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  _MyMapState createState() => _MyMapState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  late GoogleMapController googleMapController;
-  Location location = Location();
+class _MyMapState extends State<MyMap> {
+  Completer<GoogleMapController> _controller = Completer();
+  List<LatLng> _polylineCoordinates = [];
+  Set<Marker> _markers = {};
+  Set<Polyline> _polylines = {};
+  late LatLng _currentPosition;
+  LatLng? _selectedPosition;
 
-  Future<void> getCurrentLocation() async {
-    final LocationData locationData = await location.getLocation();
-    // googleMapController.moveCamera(
-    //   CameraUpdate.newCameraPosition(
-    //     CameraPosition(
-    //       target: LatLng(locationData.longitude!, locationData.longitude!),
-    //     ),
-    //   ),
-    // );
+  @override
+  void initState() {
+    super.initState();
+    _getCurrentLocation();
+  }
 
-    googleMapController.animateCamera(
+  Future<void> _getCurrentLocation() async {
+    LocationData locationData = await _getLocation();
+    setState(() {
+      _currentPosition =
+          LatLng(locationData.latitude!, locationData.longitude!);
+      _markers = {
+        Marker(
+          markerId: MarkerId("current_location"),
+          position: _currentPosition,
+          infoWindow: InfoWindow(
+            title: "My Current Location",
+            snippet:
+                "${_currentPosition.latitude}, ${_currentPosition.longitude}",
+          ),
+        ),
+      };
+      _polylineCoordinates.add(_currentPosition);
+    });
+
+    _animateToUserLocation();
+  }
+
+  Future<LocationData> _getLocation() async {
+    Location location = Location();
+    return await location.getLocation();
+  }
+
+  void _animateToUserLocation() async {
+    GoogleMapController controller = await _controller.future;
+    controller.animateCamera(
       CameraUpdate.newCameraPosition(
         CameraPosition(
-            target: LatLng(locationData.longitude!, locationData.longitude!),
-            zoom: 17),
+          target: _currentPosition,
+          zoom: 15.0,
+        ),
       ),
     );
+  }
+
+  void _updatePolyline(LatLng newPosition) {
+    setState(() {
+      _polylineCoordinates.add(newPosition);
+      _polylines = {
+        Polyline(
+          polylineId: PolylineId("user_route"),
+          color: Colors.blue,
+          points: _polylineCoordinates,
+          width: 5,
+        ),
+      };
+      _markers.add(
+        Marker(
+          markerId: MarkerId("previous_location"),
+          position: newPosition,
+          infoWindow: InfoWindow(title: "Previous Location"),
+        ),
+      );
+    });
+  }
+
+  void _onMapTapped(LatLng position) {
+    setState(() {
+      _selectedPosition = position;
+      _markers.add(
+        Marker(
+          markerId: MarkerId("selected_location"),
+          position: position,
+          infoWindow: InfoWindow(title: "Selected Location"),
+        ),
+      );
+      if (_currentPosition != null) {
+        _updatePolyline(position);
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: Text('Map with Two Markers'),
       ),
       body: GoogleMap(
-        initialCameraPosition: const CameraPosition(
-            zoom: 19,
-            target: LatLng(23.792265005916146, 90.40561775869223),
-            bearing: 0,
-            tilt: 5),
-        // onTap: (LatLng position) {
-        //   print(position);
-        // },
-        // onLongPress: (LatLng latLng) {
-        //   print('On long press at $latLng');
-        // },
-        // onCameraMove: (cameraPosition) {
-        //   print(cameraPosition);
-        // },
         onMapCreated: (GoogleMapController controller) {
-          googleMapController = controller;
-          getCurrentLocation();
+          _controller.complete(controller);
         },
-
-        zoomControlsEnabled: false,
-        zoomGesturesEnabled: false,
-        compassEnabled: false,
+        onTap: (position) => _onMapTapped(position),
+        initialCameraPosition: CameraPosition(
+          target: LatLng(0, 0),
+          zoom: 2.0,
+        ),
         myLocationEnabled: true,
-        myLocationButtonEnabled: true,
-        // markers: {
-        //   Marker(
-        //       markerId: const MarkerId('initialPosition'),
-        //       position: const LatLng(23.792265005916146, 90.40561775869223),
-        //       infoWindow: const InfoWindow(
-        //           title: 'My current location', snippet: 'LatLng'),
-        //       draggable: true,
-        //       onDragEnd: (LatLng position) {
-        //         print(position);
-        //       }),
-        //   const Marker(
-        //     markerId: MarkerId('initialPosition'),
-        //     position: LatLng(23.791865005916146, 90.40561775869223),
-        //     infoWindow:
-        //         InfoWindow(title: 'My current location', snippet: 'LatLng'),
-        //     draggable: true,
-        //   ),
-        // },
-        // polylines: {
-        //   const Polyline(polylineId: PolylineId('basic-line'), points: [
-        //     LatLng(23.792265005916146, 90.40561775869223),
-        //     LatLng(23.791865005916146, 90.40561775869223),
-        //   ])
-        // },
+        myLocationButtonEnabled: false,
+        markers: _markers,
+        polylines: _polylines,
       ),
     );
   }
