@@ -38,6 +38,12 @@ class _MyMapState extends State<MyMap> {
     _getCurrentLocation();
   }
 
+  void _startLocationUpdates() {
+    Timer.periodic(Duration(seconds: 10), (Timer timer) async {
+      await _getCurrentLocation();
+    });
+  }
+
   Future<void> _getCurrentLocation() async {
     LocationData locationData = await _getLocation();
     setState(() {
@@ -118,7 +124,7 @@ class _MyMapState extends State<MyMap> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Map with Two Markers'),
+        title: const Text('Real-Time Location Tracker'),
       ),
       body: GoogleMap(
         onMapCreated: (GoogleMapController controller) {
