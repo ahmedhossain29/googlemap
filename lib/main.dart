@@ -36,6 +36,7 @@ class _MyMapState extends State<MyMap> {
   void initState() {
     super.initState();
     _getCurrentLocation();
+    _startLocationUpdates();
   }
 
   void _startLocationUpdates() {
